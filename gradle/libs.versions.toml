@@ -1,0 +1,9 @@
+[versions]
+kotlin = "1.9.21"
+aws-cdk = "2.135.0"
+
+[libraries]
+aws-cdk = { module = "software.amazon.awscdk:aws-cdk-lib", version.ref = "aws-cdk" }
+
+[plugins]
+kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
