@@ -1,10 +1,12 @@
 package cdk
 
+import cdk.stacks.ExchangeStack
 import software.amazon.awscdk.App
 
 fun main() {
     val app = App()
-    Stack(app, "ExchangeStack")
+    ExchangeStack(app, "ExchangeStack")
+    //ExchangeApiStack(app, "ExchangeApiStack")
     app.synth()
 }
 

@@ -1,8 +1,7 @@
-package cdk
+package cdk.stacks
 
 import software.amazon.awscdk.Duration
-import software.amazon.awscdk.services.dynamodb.Attribute
-import software.amazon.awscdk.services.dynamodb.AttributeType
+import software.amazon.awscdk.Stack
 import software.amazon.awscdk.services.dynamodb.Table
 import software.amazon.awscdk.services.events.EventPattern
 import software.amazon.awscdk.services.events.Rule
@@ -16,9 +15,8 @@ import software.amazon.awscdk.services.ses.CfnTemplate
 import software.amazon.awscdk.services.ses.CfnTemplateProps
 import software.amazon.awscdk.services.sqs.Queue
 import software.constructs.Construct
-import software.amazon.awscdk.Stack as AwsStack
 
-class Stack(scope: Construct, id: String) : AwsStack(scope, id) {
+class ExchangeStack(scope: Construct, id: String) : Stack(scope, id) {
 
     init {
 
@@ -29,28 +27,38 @@ class Stack(scope: Construct, id: String) : AwsStack(scope, id) {
 
         // Create Table to save users
 
-        val table = Table.Builder.create(this, "UsersTable")
+        /*val table = Table.Builder.create(this, "UsersTable")
             .tableName("users")
             .partitionKey(Attribute.builder().name("id").type(AttributeType.STRING).build())
-            .build()
+            .build()*/
+
+        val table = Table.fromTableName(this, "UsersTable", "users")
 
         // Create Email Templates
 
-        CfnTemplate(this, "WelcomeTemplate", CfnTemplateProps.builder()
-            .template(CfnTemplate.TemplateProperty.builder()
-                .templateName("Welcome")
-                .subjectPart("Welcome, {{name}}!")
-                .htmlPart("<h1>Hello {{name}},</h1><p>Welcome to Exchange App.</p>")
-                .build())
-            .build())
+        CfnTemplate(
+            this, "WelcomeTemplate", CfnTemplateProps.builder()
+                .template(
+                    CfnTemplate.TemplateProperty.builder()
+                        .templateName("Welcome")
+                        .subjectPart("Welcome, {{name}}!")
+                        .htmlPart("<h1>Hello {{name}},</h1><p>Welcome to Exchange App.</p>")
+                        .build()
+                )
+                .build()
+        )
 
-        CfnTemplate(this, "SwapTemplate", CfnTemplateProps.builder()
-            .template(CfnTemplate.TemplateProperty.builder()
-                .templateName("Swap")
-                .subjectPart("Successful Swap")
-                .htmlPart("<h1>Hello {{name}},</h1><p>Sent: {{sentAmount}}</p><p>Sent: {{receivedAmount}}</p>")
-                .build())
-            .build())
+        CfnTemplate(
+            this, "SwapTemplate", CfnTemplateProps.builder()
+                .template(
+                    CfnTemplate.TemplateProperty.builder()
+                        .templateName("Swap")
+                        .subjectPart("Successful Swap")
+                        .htmlPart("<h1>Hello {{name}},</h1><p>Sent: {{sentAmount}}</p><p>Sent: {{receivedAmount}}</p>")
+                        .build()
+                )
+                .build()
+        )
 
         // Create Queues
 
@@ -58,7 +66,7 @@ class Stack(scope: Construct, id: String) : AwsStack(scope, id) {
             .queueName("retention_send_welcome_email_on_user_registered")
             .build()
 
-        val queue2 = Queue.Builder.create(this, "SendSwapEmailOnSwapSucceedQueue")
+        val queue2 = Queue.Builder.create(this, "SendSaveUserInfoOnUserRegisteredQueue")
             .queueName("retention_save_user_info_on_user_registered")
             .build()
 
@@ -68,7 +76,7 @@ class Stack(scope: Construct, id: String) : AwsStack(scope, id) {
 
         // Create EventBridge Rules for Queues
 
-        Rule.Builder.create(this, id)
+        Rule.Builder.create(this, "UserRegisteredEventRule")
             .eventPattern(
                 EventPattern.builder()
                     .source(listOf("ExchangeApi"))
@@ -78,7 +86,7 @@ class Stack(scope: Construct, id: String) : AwsStack(scope, id) {
             .targets(listOf(SqsQueue(queue1), SqsQueue(queue2)))
             .build()
 
-        Rule.Builder.create(this, id)
+        Rule.Builder.create(this, "SuccessfulSwapEventRule")
             .eventPattern(
                 EventPattern.builder()
                     .source(listOf("ExchangeApi"))
@@ -138,6 +146,14 @@ class Stack(scope: Construct, id: String) : AwsStack(scope, id) {
             )
             .defaultConfig()
             .build()
+
+
+        function3.addToRolePolicy(
+            PolicyStatement.Builder.create()
+                .actions(listOf("ses:*"))
+                .resources(listOf("*"))
+                .build()
+        )
 
         table.grantReadData(function3)
         function3.addEventSource(SqsEventSource(queue3))
